@@ -1,0 +1,62 @@
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+
+class DeFiAnalyzer:
+    def __init__(self):
+        self.api_url = 'https://api.coingecko.com/api/v3'
+
+    def get_defi_protocols(self) -> dict:
+        url = f"{self.api_url}/defi"
+        response = requests.get(url)
+        return response.json()
+
+    def get_defi_protocol_data(self, protocol_id: str) -> dict:
+        url = f"{self.api_url}/coins/{protocol_id}"
+        response = requests.get(url)
+        return response.json()
+
+    def get_defi_protocol_historical_data(self, protocol_id: str, vs_currency: str = 'usd', days: int = 30) -> pd.DataFrame:
+        url = f"{self.api_url}/coins/{protocol_id}/market_chart"
+        params = {
+            'vs_currency': vs_currency,
+            'days': days
+        }
+        response = requests.get(url, params=params)
+        data = response.json()
+        prices = data['prices']
+        df = pd.DataFrame(prices, columns=['timestamp', 'price'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        return df
+
+    def plot_defi_protocol_trend(self, protocol_id: str, vs_currency: str = 'usd', days: int = 30):
+        df = self.get_defi_protocol_historical_data(protocol_id, vs_currency, days)
+        if df.empty:
+            print("No historical data found.")
+            return
+
+        plt.figure(figsize=(12, 6))
+        plt.plot(df['timestamp'], df['price'], marker='o', linestyle='-')
+        plt.title(f'{protocol_id.capitalize()} Price Trend')
+        plt.xlabel('Date')
+        plt.ylabel(f'Price ({vs_currency.upper()})')
+        plt.grid(True)
+        plt.show()
+
+# Example Usage
+if __name__ == "__main__":
+    defi_analyzer = DeFiAnalyzer()
+
+    # Fetch and Display DeFi Protocols
+    defi_protocols = defi_analyzer.get_defi_protocols()
+    print("DeFi Protocols:")
+    print(defi_protocols)
+
+    # Fetch and Display Data for a Specific DeFi Protocol
+    protocol_id = 'uniswap'  # Replace with the DeFi protocol ID you want to explore
+    protocol_data = defi_analyzer.get_defi_protocol_data(protocol_id)
+    print(f"DeFi Protocol Data for {protocol_id}:")
+    print(protocol_data)
+
+    # Fetch and Display Historical Price Data and Plot Trend
+    defi_analyzer.plot_defi_protocol_trend(protocol_id=protocol_id, days=30)
